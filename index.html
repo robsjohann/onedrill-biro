@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OneDrill × BIRO — Project & Page Status</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+:root{
+  --navy:#0f2a4a;--navy2:#1a3a5e;
+  --green:#3B6D11;--gbg:#EAF3DE;--gtext:#27500A;
+  --red:#A32D2D;--rbg:#FCEBEB;--rtext:#7D1F1F;
+  --amber:#854F0B;--abg:#FAEEDA;--atext:#633806;
+  --blue:#185FA5;--bbg:#E6F1FB;
+  --border:#e4e4e4;--muted:#666;--bg:#f2f2f0;
+}
+body{background:var(--bg);min-height:100vh;overflow:hidden}
+
+/* LOGIN */
+.login-wrap{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:999}
+.login-wrap.gone{display:none}
+.lbox{background:#fff;border-radius:12px;padding:32px 36px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.ll{font-size:20px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.ls{font-size:12px;color:var(--muted);margin-bottom:22px}
+.lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;display:block}
+.linp{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;margin-bottom:12px;color:#111}
+.linp:focus{border-color:var(--blue)}
+.lbtn{width:100%;background:var(--navy);color:#fff;border:none;padding:10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.lbtn:disabled{opacity:.6;cursor:not-allowed}
+.lerr{background:var(--rbg);color:var(--rtext);padding:7px 10px;border-radius:5px;font-size:11px;margin-top:8px;display:none}
+.lerr.show{display:block}
+.lskip{font-size:11px;color:var(--blue);text-align:center;margin-top:10px;cursor:pointer}
+
+/* NAV */
+.nav{background:var(--navy);color:#fff;height:50px;display:flex;align-items:center;padding:0 16px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.logo{font-size:14px;font-weight:700}
+.logo em{opacity:.35;font-style:normal;margin:0 5px}
+.nav-sp{flex:1}
+.pill{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.1);font-size:11px;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:#aaa;flex-shrink:0}
+.dot.live{background:#5fcf7a}.dot.err{background:#f87171}.dot.ld{background:#fbbf24;animation:bl 1s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+.nbtn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px}
+.nbtn:hover{background:rgba(255,255,255,.22)}
+
+/* SUMMARY */
+.sum{background:var(--navy2);color:#fff;display:flex;position:fixed;top:50px;left:0;right:0;z-index:100;overflow-x:auto}
+.sc{padding:8px 14px;border-right:1px solid rgba(255,255,255,.1);flex-shrink:0;min-width:80px}
+.scv{font-size:18px;font-weight:700;line-height:1;margin-bottom:2px}
+.scv.g{color:#7ed957}.scv.r{color:#f87171}.scv.a{color:#fbbf24}.scv.b{color:#93c5fd}
+.scl{font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.4px}
+.sc-prog{flex:1;display:flex;align-items:center;padding:8px 14px;gap:8px;min-width:130px}
+.pt{flex:1;height:5px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden}
+.pf{height:100%;background:#7ed957;border-radius:3px;transition:width .5s}
+.pp{font-size:12px;font-weight:700;color:#7ed957;min-width:32px;text-align:right}
+
+/* LAYOUT */
+.layout{position:fixed;top:88px;left:0;right:0;bottom:0;display:grid;grid-template-columns:270px 1fr}
+
+/* SIDEBAR */
+.sb{background:#fff;border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.sb-top{flex-shrink:0;border-bottom:1px solid var(--border)}
+.fbrow{display:flex;gap:4px;padding:6px 10px;flex-wrap:wrap}
+.fb{padding:3px 8px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:10px;color:var(--muted);cursor:pointer}
+.fb:hover{background:#f5f5f5}
+.fb.a{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fb.ac{background:var(--green);color:#fff;border-color:var(--green)}
+.fb.ap{background:var(--amber);color:#fff;border-color:var(--amber)}
+.fb.ao{background:var(--red);color:#fff;border-color:var(--red)}
+.srch{width:100%;padding:5px 10px;border:none;border-bottom:1px solid var(--border);font-size:11px;outline:none}
+.pi{padding:8px 12px;border-bottom:1px solid #f4f4f4;cursor:pointer;display:flex;align-items:center;gap:7px;border-left:3px solid transparent}
+.pi:hover{background:#f9f9f9}.pi.sel{background:#eaf0fb;border-left-color:var(--blue)}
+.pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pdot.g{background:var(--green)}.pdot.a{background:var(--amber)}.pdot.r{background:var(--red)}.pdot.x{background:#ccc}
+.pb{flex:1;min-width:0}
+.pn{font-size:11px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm{font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbar{height:2px;background:#eee;border-radius:1px;margin-top:3px;overflow:hidden}
+.pbf{height:100%;border-radius:1px}
+.pr{text-align:right;flex-shrink:0}
+.pft{font-size:10px;font-weight:700}
+.pft.g{color:var(--green)}.pft.a{color:var(--amber)}.pft.r{color:var(--red)}.pft.x{color:#ccc}
+
+/* RIGHT PANEL */
+.right{display:flex;flex-direction:column;overflow:hidden}
+
+/* Project header */
+.rhdr{background:#fff;border-bottom:1px solid var(--border);padding:9px 16px;flex-shrink:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rtitle{font-size:13px;font-weight:600;flex:1}
+.rmeta{font-size:10px;color:var(--muted);margin-top:2px}
+.rbdg{font-size:9px;padding:2px 7px;border-radius:5px;font-weight:700}
+.rbdg.andamento{background:var(--gbg);color:var(--gtext)}
+.rbdg.planejamento{background:var(--abg);color:var(--atext)}
+.rbdg.concluido{background:#f0f0f0;color:#888}
+
+/* Content grid */
+.content{flex:1;display:grid;grid-template-columns:1fr 300px;overflow:hidden;min-height:0}
+
+/* PAGE GRID */
+.page-grid-wrap{overflow-y:auto;padding:12px 16px}
+.pg-section{margin-bottom:20px}
+.pg-sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:6px 0;margin-bottom:8px;border-bottom:2px solid}
+.pg-sec-title.ready{color:var(--green);border-color:var(--green)}
+.pg-sec-title.partial{color:var(--amber);border-color:var(--amber)}
+.pg-sec-title.open{color:var(--red);border-color:var(--red)}
+.pg-sec-title.no-data{color:#bbb;border-color:#eee}
+
+/* PAGE CARDS */
+.page-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.pc{border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;transition:box-shadow .15s;background:#fff}
+.pc:hover{box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.pc.sel{box-shadow:0 0 0 2px var(--blue)}
+.pc-thumb{position:relative;background:#ddd;height:110px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.pc-thumb canvas{max-width:100%;max-height:100%;display:block}
+.pc-thumb .loading-thumb{font-size:11px;color:#aaa}
+.pc-status-bar{height:4px;width:100%}
+.pc-status-bar.ready{background:var(--green)}
+.pc-status-bar.partial{background:var(--amber)}
+.pc-status-bar.open{background:var(--red)}
+.pc-status-bar.no-data{background:#eee}
+.pc-body{padding:7px 9px}
+.pc-page{font-size:11px;font-weight:700;color:#111}
+.pc-ft{font-size:10px;margin-top:2px}
+.pc-ft.g{color:var(--green);font-weight:600}
+.pc-ft.a{color:var(--amber);font-weight:600}
+.pc-ft.r{color:var(--red)}
+.pc-ft.x{color:#bbb}
+.pc-tickets{font-size:9px;color:var(--muted);margin-top:2px}
+
+/* PDF VIEWER OVERLAY */
+.pdf-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.pdf-overlay.gone{display:none}
+.pdf-overlay-box{background:#fff;border-radius:10px;overflow:hidden;width:90vw;height:90vh;display:flex;flex-direction:column;max-width:1100px}
+.pdf-ov-hdr{background:var(--navy);color:#fff;padding:8px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.pdf-ov-title{font-size:13px;font-weight:600;flex:1}
+.pdf-ov-nav{display:flex;align-items:center;gap:6px;font-size:11px}
+.pdf-ov-nav button{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:#fff;padding:3px 9px;border-radius:4px;cursor:pointer;font-size:11px}
+.pdf-ov-nav button:disabled{opacity:.3;cursor:not-allowed}
+.pdf-ov-body{flex:1;overflow:auto;background:#555;display:flex;align-items:flex-start;justify-content:center;padding:10px;position:relative}
+.pdf-canvas-wrap{position:relative;display:inline-block;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+#pdfCanvas{display:block}
+#annotCanvas{position:absolute;top:0;left:0;pointer-events:none}
+
+/* Page status badge on PDF */
+.pdf-page-badge{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.97);border-radius:8px;padding:10px 14px;box-shadow:0 2px 12px rgba(0,0,0,.2);font-size:11px;min-width:170px;pointer-events:none;z-index:10}
+.ppb-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.ppb-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;font-size:11px}
+.ppb-val{font-weight:700}
+.ppb-divider{height:1px;background:#eee;margin:5px 0}
+
+/* TICKET PANEL */
+.tkt-panel{background:#fff;border-left:1px solid var(--border);overflow-y:auto}
+.tp-hdr{padding:8px 12px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;background:#fff;display:flex;justify-content:space-between}
+.tgrp{border-bottom:1px solid var(--border)}
+.tghdr{padding:5px 11px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;background:#fafafa;display:flex;align-items:center;gap:5px}
+.trow{padding:7px 11px;border-bottom:1px solid #f5f5f5;display:flex;align-items:flex-start;gap:6px}
+.trow:last-child{border-bottom:none}
+.tnum{font-size:11px;font-weight:700;color:#111;white-space:nowrap}
+.taddr{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.tft{font-size:10px;font-weight:700;color:var(--green);white-space:nowrap}
+.tbdg{font-size:8px;padding:2px 6px;border-radius:4px;font-weight:700;flex-shrink:0;white-space:nowrap}
+.tbdg.Clear,.tbdg.Closed{background:var(--gbg);color:var(--gtext)}
+.tbdg.Open{background:var(--rbg);color:var(--rtext)}
+.tbdg.Damage{background:var(--abg);color:var(--atext)}
+.tbdg.Cancel{background:#f0f0f0;color:#888}
+.exp{font-size:9px;padding:1px 4px;border-radius:3px;font-weight:600}
+.exp.ok{background:var(--gbg);color:var(--gtext)}
+.exp.warn{background:var(--abg);color:var(--atext)}
+.exp.danger{background:var(--rbg);color:var(--rtext)}
+
+.nosel{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#bbb;gap:8px;font-size:12px;text-align:center;padding:20px}
+.empty{padding:20px;text-align:center;color:#bbb;font-size:11px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="lbox">
+    <div class="ll">OneDrill × BIRO</div>
+    <div class="ls">Sign in with your BIRO account</div>
+    <label class="lbl">Email</label>
+    <input class="linp" id="lem" type="email" placeholder="you@email.com" autocomplete="username email">
+    <label class="lbl">Password</label>
+    <input class="linp" id="lpw" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="lbtn" id="lbtn" onclick="doLogin()">Sign in</button>
+    <div class="lerr" id="lerr"></div>
+    <div class="lskip" onclick="skipLogin()">Skip — OneDrill only</div>
+  </div>
+</div>
+
+<!-- PDF VIEWER OVERLAY -->
+<div class="pdf-overlay gone" id="pdfOverlay">
+  <div class="pdf-overlay-box">
+    <div class="pdf-ov-hdr">
+      <div class="pdf-ov-title" id="pov-title">—</div>
+      <div class="pdf-ov-nav">
+        <button onclick="ovPrev()" id="ov-prev" disabled>◀</button>
+        <span id="ov-page-info" style="min-width:70px;text-align:center">—</span>
+        <button onclick="ovNext()" id="ov-next" disabled>▶</button>
+      </div>
+      <button class="nbtn" onclick="closePdfOverlay()">✕ Close</button>
+    </div>
+    <div class="pdf-ov-body" id="pov-body">
+      <div class="pdf-canvas-wrap" id="pov-canvas-wrap">
+        <canvas id="pdfCanvas"></canvas>
+        <canvas id="annotCanvas"></canvas>
+        <div class="pdf-page-badge" id="page-badge" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="logo">OneDrill <em>×</em> BIRO</div>
+  <div class="nav-sp"></div>
+  <div class="pill" id="bp"><div class="dot ld"></div><span>BIRO…</span></div>
+  <div class="pill" id="op"><div class="dot ld"></div><span>OneDrill…</span></div>
+  <button class="nbtn" onclick="loadAll()">↻ Sync</button>
+  <button class="nbtn" id="sobtn" style="display:none" onclick="doSignOut()">Sign out</button>
+</nav>
+
+<!-- SUMMARY -->
+<div class="sum">
+  <div class="sc"><div class="scv b" id="s-pr">—</div><div class="scl">Projects</div></div>
+  <div class="sc"><div class="scv b" id="s-tk">—</div><div class="scl">Tickets</div></div>
+  <div class="sc"><div class="scv g" id="s-cl">—</div><div class="scl">Clear</div></div>
+  <div class="sc"><div class="scv r" id="s-op">—</div><div class="scl">Open</div></div>
+  <div class="sc"><div class="scv a" id="s-dm">—</div><div class="scl">Damage</div></div>
+  <div class="sc"><div class="scv r" id="s-ex">—</div><div class="scl">Exp ≤7d</div></div>
+  <div class="sc"><div class="scv g" id="s-ft">—</div><div class="scl">Ft tagged</div></div>
+  <div class="sc-prog"><div class="pt"><div class="pf" id="s-bar" style="width:0%"></div></div><div class="pp" id="s-pct">0%</div></div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <div class="sb">
+    <div class="sb-top">
+      <div class="fbrow">
+        <button class="fb a"  id="fa" onclick="setF('a',this)">All</button>
+        <button class="fb"    id="fc" onclick="setF('c',this)">✓ Clear</button>
+        <button class="fb"    id="fp" onclick="setF('p',this)">● Partial</button>
+        <button class="fb"    id="fo" onclick="setF('o',this)">● Open</button>
+      </div>
+      <input class="srch" id="srch" placeholder="Search project…" oninput="renderList()">
+    </div>
+    <div id="plist"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="right" id="right">
+    <div class="nosel">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <div>Select a project</div>
+      <div style="font-size:11px;color:#ccc">See page-by-page status — footage ready vs pending per page</div>
+    </div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const BIRO_URL='https://tozekdiwpmemnoiegwer.supabase.co';
+const BIRO_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvemVrZGl3cG1lbW5vaWVnd2VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5ODgyMTcsImV4cCI6MjA5MzU2NDIxN30.9EmcfcwMyZBGquyNdDMKzVbY80ghOy8fxtYrHMZU92k';
+const OD_URL='https://ofbqtaulvzeltfpqcjhh.supabase.co';
+const OD_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mYnF0YXVsdnplbHRmcHFjamhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MDMyMjAsImV4cCI6MjA4OTk3OTIyMH0.zPU8SCUAVrTOxp-cuKupXBt0QgRkxnLcpScwnHJKVWE';
+
+const biro=supabase.createClient(BIRO_URL,BIRO_KEY);
+const od=supabase.createClient(OD_URL,OD_KEY);
+
+let biroProjects=[],pdMap={},odTickets=[],odProjects=[];
+let curFilter='a',curProject=null,biroSession=null;
+let pdfDoc=null,ovPage=1,ovTotalPages=0,ovRendering=false;
+let curPageData={};
+
+// ── AUTH ─────────────────────────────────────────────────────
+async function doLogin(){
+  const e=document.getElementById('lem').value.trim();
+  const p=document.getElementById('lpw').value;
+  const btn=document.getElementById('lbtn');
+  const err=document.getElementById('lerr');
+  if(!e||!p){err.textContent='Enter email and password';err.classList.add('show');return;}
+  btn.disabled=true;btn.textContent='Signing in…';err.classList.remove('show');
+  try{
+    const{data,error}=await biro.auth.signInWithPassword({email:e,password:p});
+    if(error){
+      err.textContent='Login failed: '+error.message;
+      err.classList.add('show');
+      btn.disabled=false;btn.textContent='Sign in';
+      return;
+    }
+    if(!data?.session){
+      err.textContent='No session returned — check credentials';
+      err.classList.add('show');
+      btn.disabled=false;btn.textContent='Sign in';
+      return;
+    }
+    biroSession=data.session;
+    document.getElementById('sobtn').style.display='block';
+    document.getElementById('loginWrap').classList.add('gone');
+    loadAll();
+  }catch(ex){
+    err.textContent='Error: '+ex.message;
+    err.classList.add('show');
+    btn.disabled=false;btn.textContent='Sign in';
+  }
+}
+function skipLogin(){document.getElementById('loginWrap').classList.add('gone');loadAll();}
+
+// Test BIRO connection independently
+async function testBiroConn(){
+  try{
+    const{data,error}=await biro.from('projects').select('id').limit(1);
+    if(error) console.warn('BIRO anon test error:',error.message);
+    else console.log('BIRO anon connection OK, rows:',data?.length);
+  }catch(e){console.error('BIRO connection failed:',e);}
+}
+testBiroConn();
+async function doSignOut(){await biro.auth.signOut();location.reload();}
+
+function conn(id,s,l){const e=document.getElementById(id);e.querySelector('.dot').className='dot '+s;e.querySelector('span').textContent=l;}
+
+// ── LOAD ─────────────────────────────────────────────────────
+async function loadAll(){
+  conn('bp','ld','BIRO…');conn('op','ld','OneDrill…');
+  await Promise.all([loadBiro(),loadOD()]);
+  renderSummary();renderList();
+}
+
+async function loadBiro(){
+  try{
+    const[{data:p},{data:pd}]=await Promise.all([
+      biro.from('projects').select('*').order('updated_at',{ascending:false}).limit(500),
+      biro.from('project_data').select('project_id,annotations,tag_table_rows').limit(500)
+    ]);
+    biroProjects=p||[];
+    pdMap={};
+    (pd||[]).forEach(row=>{
+      const existing=pdMap[row.project_id];
+      const newAnn=(row.annotations||[]).length;
+      const exAnn=(existing?.annotations||[]).length;
+      if(!existing||newAnn>exAnn) pdMap[row.project_id]=row;
+    });
+    conn('bp','live',`BIRO · ${biroProjects.length} projects`);
+  }catch(e){conn('bp','err','BIRO error');console.error(e);}
+}
+
+async function loadOD(){
+  try{
+    const[{data:t,error:te},{data:p}]=await Promise.all([
+      od.from('tickets').select('*').limit(2000),
+      od.from('projects').select('*').limit(500)
+    ]);
+    if(te)throw te;
+    odTickets=t||[];odProjects=p||[];
+    conn('op','live',`OneDrill · ${odTickets.length} tickets`);
+  }catch(e){conn('op','err','OneDrill error');}
+}
+
+// ── MATCHING ─────────────────────────────────────────────────
+function getProjectTickets(bp){
+  const name=(bp.name||'').toLowerCase();
+  const state=(bp.state||bp.estado||'').toUpperCase();
+  const first=name.split(/[\s\-_#\/]/)[0];
+  return odTickets.filter(t=>{
+    const ts=(t.state||'').toUpperCase();
+    const hay=[t.ticket,t.job,t.address,t.location,t.notes,t.prime,t.client].join(' ').toLowerCase();
+    return(ts===state&&first.length>2&&hay.includes(first))||
+      (t.project_id&&odProjects.find(op=>op.id===t.project_id&&(op.name||'').toLowerCase().includes(first)));
+  });
+}
+
+// ── PAGE DATA BUILDER ─────────────────────────────────────────
+// Builds per-page breakdown: footage from tags + annotation presence
+function buildPageData(bp){
+  const pd=pdMap[bp.id];
+  const tkts=getProjectTickets(bp);
+  if(!pd) return{pages:{},totalFt:0,doneFt:0,pendingFt:0};
+
+  const annotations=pd.annotations||[];
+  const tags=pd.tag_table_rows||[];
+
+  // Get unique pages from annotations
+  const pageNums=[...new Set(annotations.map(a=>a.page).filter(Boolean))].sort((a,b)=>a-b);
+
+  // Total footage from tags (not per-page since tags don't have page number)
+  const totalTagFt=tags.reduce((s,t)=>s+(parseFloat(t.prod)||0),0);
+
+  // Per-page annotation counts
+  const pages={};
+  pageNums.forEach(pg=>{
+    const pgAnns=annotations.filter(a=>a.page===pg);
+    const arrows=pgAnns.filter(a=>a.type==='arrow'||a.type==='line');
+    const pgTags=pgAnns.filter(a=>a.type==='tag');
+    const pgFt=pgTags.reduce((s,a)=>s+(parseFloat((a.data||{}).prod)||0),0);
+    const crews=[...new Set(pgTags.map(a=>(a.data||{}).equipe).filter(Boolean))];
+
+    // Match tickets to this page by crew/equipe field
+    const pageTickets=tkts.filter(t=>{
+      const tnum=(t.ticket||'').toString();
+      return crews.some(c=>(c||'').toUpperCase().includes(tnum.slice(-4))||
+        tnum.includes((c||'').replace(/[^0-9]/g,'').slice(-4)));
+    });
+
+    // Status: if arrows on page = redlined = work done on this page
+    const isRedlined=arrows.length>0;
+    // Ticket status for this page
+    const pgClr=pageTickets.filter(t=>t.status==='Clear'||t.status==='Closed').length;
+    const pgOpn=pageTickets.filter(t=>t.status==='Open').length;
+    const pgDmg=pageTickets.filter(t=>t.status==='Damage').length;
+
+    let status='no-data';
+    if(pgDmg>0) status='damage';
+    else if(pageTickets.length>0){
+      if(pgClr===pageTickets.length) status='ready';
+      else if(pgClr>0) status='partial';
+      else status='open';
+    } else if(isRedlined) status='ready'; // has redlines = done
+    else if(pgTags.length>0) status='partial';
+
+    pages[pg]={
+      page:pg,
+      annotations:pgAnns.length,
+      arrows:arrows.length,
+      tags:pgTags.length,
+      footage:pgFt,
+      crews,
+      tickets:pageTickets,
+      clearCount:pgClr,
+      openCount:pgOpn,
+      dmgCount:pgDmg,
+      status,
+      isRedlined
+    };
+  });
+
+  // Overall ticket stats
+  const clr=tkts.filter(t=>t.status==='Clear'||t.status==='Closed').length;
+  const opn=tkts.filter(t=>t.status==='Open').length;
+  const pct=tkts.length>0?Math.round(clr/tkts.length*100):0;
+
+  return{pages,pageNums,totalFt:totalTagFt,tickets:tkts,clr,opn,pct};
+}
+
+function getProjStat(bp){
+  const d=buildPageData(bp);
+  if(!d.tickets.length&&!d.pageNums?.length)return'none';
+  const dmg=d.tickets.filter(t=>t.status==='Damage').length;
+  if(dmg>0)return'damage';
+  if(d.pct>=100&&d.tickets.length>0)return'clear';
+  if(d.clr>0)return'partial';
+  return'open';
+}
+
+// ── SUMMARY ──────────────────────────────────────────────────
+function renderSummary(){
+  const tot=odTickets.length;
+  const clr=odTickets.filter(t=>t.status==='Clear'||t.status==='Closed').length;
+  const opn=odTickets.filter(t=>t.status==='Open').length;
+  const dmg=odTickets.filter(t=>t.status==='Damage').length;
+  const exp=odTickets.filter(t=>{const d=daysUntil(t.expire);return d!==null&&d>=0&&d<=7&&t.status==='Open';}).length;
+  const ft=Object.values(pdMap).reduce((s,pd)=>{
+    return s+(pd.tag_table_rows||[]).reduce((ss,t)=>ss+(parseFloat(t.prod)||0),0);
+  },0);
+  const pct=tot>0?Math.round(clr/tot*100):0;
+  document.getElementById('s-pr').textContent=biroProjects.length;
+  document.getElementById('s-tk').textContent=tot;
+  document.getElementById('s-cl').textContent=clr;
+  document.getElementById('s-op').textContent=opn;
+  document.getElementById('s-dm').textContent=dmg;
+  document.getElementById('s-ex').textContent=exp;
+  document.getElementById('s-ft').textContent=ft>0?ft.toLocaleString()+' ft':'—';
+  document.getElementById('s-bar').style.width=pct+'%';
+  document.getElementById('s-pct').textContent=pct+'%';
+}
+
+function daysUntil(d){if(!d)return null;return Math.ceil((new Date(d)-new Date())/86400000);}
+
+// ── LIST ─────────────────────────────────────────────────────
+function setF(f,btn){
+  curFilter=f;
+  document.querySelectorAll('.fb').forEach(b=>b.className='fb');
+  btn.className='fb '+{a:'a',c:'ac',p:'ap',o:'ao'}[f];
+  renderList();
+}
+
+function renderList(){
+  const q=document.getElementById('srch').value.toLowerCase();
+  const colMap={clear:'#3B6D11',partial:'#BA7517',damage:'#A32D2D',open:'#A32D2D',none:'#ccc'};
+  const filtered=biroProjects.filter(p=>{
+    const st=getProjStat(p);
+    if(curFilter==='c'&&st!=='clear')return false;
+    if(curFilter==='p'&&st!=='partial')return false;
+    if(curFilter==='o'&&(st==='clear'||st==='partial'))return false;
+    if(q&&!(p.name||'').toLowerCase().includes(q)&&!(p.client||'').toLowerCase().includes(q))return false;
+    return true;
+  });
+  const list=document.getElementById('plist');
+  if(!filtered.length){list.innerHTML='<div class="empty">No projects</div>';return;}
+  list.innerHTML=filtered.map(p=>{
+    const st=getProjStat(p);
+    const pd=pdMap[p.id];
+    const d=buildPageData(p);
+    const col=colMap[st]||'#ccc';
+    const dcl={clear:'g',partial:'a',damage:'r',open:'r',none:'x'}[st];
+    const pages=d.pageNums?.length||0;
+    const pct=d.pct||0;
+    const sel=curProject?.id===p.id?'sel':'';
+    return`<div class="pi ${sel}" onclick="selectProject('${p.id}')">
+      <div class="pdot ${dcl}"></div>
+      <div class="pb">
+        <div class="pn">${p.name||'—'}</div>
+        <div class="pm">${p.client||''}${p.state||p.estado?' · '+(p.state||p.estado):''}${pages?' · '+pages+' pages':''}</div>
+        <div class="pbar"><div class="pbf" style="width:${pct}%;background:${col}"></div></div>
+      </div>
+      <div class="pr">
+        <div class="pft ${dcl}">${d.clr>0?d.clr+'/'+d.tickets.length+' clr':d.tickets.length>0?d.tickets.length+' tkts':d.totalFt>0?d.totalFt.toLocaleString()+'ft':'—'}</div>
+        <div style="font-size:9px;color:#bbb">${pct>0?pct+'% clear':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── SELECT PROJECT ────────────────────────────────────────────
+function selectProject(id){
+  curProject=biroProjects.find(p=>p.id===id);
+  if(!curProject)return;
+  pdfDoc=null;
+  renderList();
+  renderProjectView();
+}
+
+async function renderProjectView(){
+  const p=curProject;
+  const d=buildPageData(p);
+  const phase=p.status||p.fase||'andamento';
+  const right=document.getElementById('right');
+
+  // Group pages by status
+  const readyPages=Object.values(d.pages||{}).filter(pg=>pg.status==='ready');
+  const partialPages=Object.values(d.pages||{}).filter(pg=>pg.status==='partial');
+  const openPages=Object.values(d.pages||{}).filter(pg=>pg.status==='open');
+  const noDataPages=Object.values(d.pages||{}).filter(pg=>pg.status==='no-data'||pg.status==='damage');
+
+  const readyFt=readyPages.reduce((s,pg)=>s+pg.footage,0);
+  const partialFt=partialPages.reduce((s,pg)=>s+pg.footage,0);
+  const openFt=openPages.reduce((s,pg)=>s+pg.footage,0);
+  const totalFt=d.totalFt;
+
+  right.innerHTML=`
+    <div class="rhdr">
+      <div style="flex:1;min-width:0">
+        <div class="rtitle">${p.name||'—'}</div>
+        <div class="rmeta">${p.client||''}${p.prime?' · '+p.prime:''}${p.state||p.estado?' · '+(p.state||p.estado):''}${p.total_bore_ft?' · '+parseInt(p.total_bore_ft).toLocaleString()+' ft contracted':''}</div>
+      </div>
+      <span class="rbdg ${phase}">${phase}</span>
+    </div>
+    <div class="content">
+      <div class="page-grid-wrap" id="pgw">
+        ${readyPages.length?`
+        <div class="pg-section">
+          <div class="pg-sec-title ready">
+            ✓ Ready to Work — Tickets Clear
+            ${readyFt>0?`<span style="float:right;font-weight:400">${readyFt.toLocaleString()} ft ready</span>`:''}
+          </div>
+          <div class="page-cards">${readyPages.map(pg=>pageCard(pg,p)).join('')}</div>
+        </div>`:''}
+        ${partialPages.length?`
+        <div class="pg-section">
+          <div class="pg-sec-title partial">
+            ◑ Partial — Some Tickets Clear
+            ${partialFt>0?`<span style="float:right;font-weight:400">${partialFt.toLocaleString()} ft</span>`:''}
+          </div>
+          <div class="page-cards">${partialPages.map(pg=>pageCard(pg,p)).join('')}</div>
+        </div>`:''}
+        ${openPages.length?`
+        <div class="pg-section">
+          <div class="pg-sec-title open">
+            ● Waiting — Tickets Open
+            ${openFt>0?`<span style="float:right;font-weight:400">${openFt.toLocaleString()} ft waiting</span>`:''}
+          </div>
+          <div class="page-cards">${openPages.map(pg=>pageCard(pg,p)).join('')}</div>
+        </div>`:''}
+        ${noDataPages.length?`
+        <div class="pg-section">
+          <div class="pg-sec-title no-data">◌ Annotated — No Ticket Match</div>
+          <div class="page-cards">${noDataPages.map(pg=>pageCard(pg,p)).join('')}</div>
+        </div>`:''}
+        ${!Object.keys(d.pages||{}).length?`
+        <div style="padding:30px;text-align:center;color:#bbb">
+          <div style="font-size:32px;margin-bottom:10px">📄</div>
+          <div style="font-size:13px">No page annotations yet for this project</div>
+          <div style="font-size:11px;margin-top:6px">Open this project in BIRO to add markups and tags</div>
+          ${d.tickets.length?`<div style="margin-top:12px;font-size:12px;color:#185FA5">${d.tickets.length} OneDrill tickets matched · ${d.clr} clear · ${d.opn} open</div>`:''}
+        </div>`:''}
+      </div>
+      <div class="tkt-panel">
+        <div class="tp-hdr"><span>Tickets</span><span style="font-weight:400;color:#bbb">${d.tickets.length}</span></div>
+        ${!d.tickets.length?'<div class="empty">No tickets matched<br><span style="font-size:10px">Matched by state + project name</span></div>':''}
+        ${renderTktGroup('⛔ Damage',d.tickets.filter(t=>t.status==='Damage'),'#A32D2D')}
+        ${renderTktGroup('● Open',d.tickets.filter(t=>t.status==='Open'),'#854F0B')}
+        ${renderTktGroup('✓ Clear',d.tickets.filter(t=>t.status==='Clear'||t.status==='Closed'),'#3B6D11')}
+        ${renderTktGroup('◌ Cancel',d.tickets.filter(t=>t.status==='Cancel'||t.status==='Cancelled'),'#888')}
+      </div>
+    </div>`;
+
+  // Load PDF thumbnails in background
+  if(p.pdf_storage_path&&biroSession){
+    loadPDFThumbs(p);
+  }
+}
+
+function pageCard(pg,p){
+  const colMap={ready:'#3B6D11',partial:'#BA7517',open:'#A32D2D','no-data':'#ccc',damage:'#A32D2D'};
+  const col=colMap[pg.status];
+  const ftColor=pg.footage>0?(pg.status==='ready'?'g':pg.status==='partial'?'a':'r'):'x';
+  return`<div class="pc" id="pc-${pg.page}" onclick="openPdfAtPage(${pg.page})">
+    <div class="pc-thumb" id="thumb-${pg.page}">
+      <span class="loading-thumb">Page ${pg.page}</span>
+    </div>
+    <div class="pc-status-bar ${pg.status}"></div>
+    <div class="pc-body">
+      <div class="pc-page">Page ${pg.page}
+        ${pg.isRedlined?'<span style="color:#3B6D11;font-size:9px;margin-left:4px">✓ redlined</span>':''}
+      </div>
+      ${pg.footage>0?`<div class="pc-ft ${ftColor}">${pg.footage.toLocaleString()} ft ${pg.status==='ready'?'ready':pg.status==='partial'?'partial':'pending'}</div>`:'<div class="pc-ft x">No footage tagged</div>'}
+      <div class="pc-tickets">
+        ${pg.clearCount>0?`<span style="color:#3B6D11">✓${pg.clearCount} clear</span> `:''}
+        ${pg.openCount>0?`<span style="color:#A32D2D">●${pg.openCount} open</span> `:''}
+        ${pg.dmgCount>0?`<span style="color:#A32D2D">⛔${pg.dmgCount} dmg</span>`:''}
+        ${!pg.clearCount&&!pg.openCount&&!pg.dmgCount?`<span style="color:#bbb">${pg.annotations} annotations</span>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderTktGroup(label,tkts,color){
+  if(!tkts.length)return'';
+  return`<div class="tgrp">
+    <div class="tghdr" style="color:${color}">${label} <span style="color:#bbb;font-weight:400">${tkts.length}</span></div>
+    ${tkts.map(t=>{
+      const ft=parseFloat(t.footage)||parseFloat(t.completed_feet)||0;
+      const days=daysUntil(t.expire);
+      const ec=days===null?'':days<0?'danger':days<=7?'warn':'ok';
+      const el=days===null?'':days<0?Math.abs(days)+'d ago':days===0?'Today':days+'d';
+      return`<div class="trow">
+        <div style="flex:1;min-width:0">
+          <div class="tnum">${t.ticket||'—'}</div>
+          <div class="taddr">${t.address||t.location||'—'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-right:4px">
+          ${ft>0?`<div class="tft">${ft.toLocaleString()}ft</div>`:''}
+          ${el?`<div class="exp ${ec}">${el}</div>`:''}
+        </div>
+        <span class="tbdg ${t.status||'Open'}">${t.status||'Open'}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── PDF THUMBNAILS ────────────────────────────────────────────
+async function loadPDFThumbs(p){
+  try{
+    const{data:sd,error}=await biro.storage.from('pdfs').createSignedUrl(p.pdf_storage_path,3600);
+    if(error||!sd)return;
+    pdfDoc=await pdfjsLib.getDocument(sd.signedUrl).promise;
+    const pd=pdMap[p.id];
+    const pageNums=Object.keys(pd?.pages||{}).map(Number);
+    // Render thumbnails for all annotated pages
+    const annotatedPages=[...new Set((pd?.annotations||[]).map(a=>a.page).filter(Boolean))];
+    for(const pgNum of annotatedPages){
+      const el=document.getElementById(`thumb-${pgNum}`);
+      if(!el)continue;
+      try{
+        const page=await pdfDoc.getPage(pgNum);
+        const vp=page.getViewport({scale:.25});
+        const canvas=document.createElement('canvas');
+        canvas.width=vp.width;canvas.height=vp.height;
+        await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+        el.innerHTML='';
+        el.appendChild(canvas);
+      }catch(e){/* skip */}
+    }
+  }catch(e){console.error('Thumb error:',e);}
+}
+
+// ── PDF OVERLAY ───────────────────────────────────────────────
+async function openPdfAtPage(pageNum){
+  if(!pdfDoc&&curProject?.pdf_storage_path&&biroSession){
+    const{data:sd}=await biro.storage.from('pdfs').createSignedUrl(curProject.pdf_storage_path,3600);
+    if(sd) pdfDoc=await pdfjsLib.getDocument(sd.signedUrl).promise;
+  }
+  if(!pdfDoc)return;
+  ovPage=pageNum;
+  ovTotalPages=pdfDoc.numPages;
+  document.getElementById('pdfOverlay').classList.remove('gone');
+  document.getElementById('pov-title').textContent=`${curProject.name} — Page ${pageNum}`;
+  renderOvPage(pageNum);
+}
+
+function closePdfOverlay(){document.getElementById('pdfOverlay').classList.add('gone');}
+function ovPrev(){if(ovPage>1){ovPage--;renderOvPage(ovPage);}}
+function ovNext(){if(ovPage<ovTotalPages){ovPage++;renderOvPage(ovPage);}}
+
+async function renderOvPage(pageNum){
+  if(!pdfDoc||ovRendering)return;
+  ovRendering=true;
+  document.getElementById('ov-prev').disabled=pageNum<=1;
+  document.getElementById('ov-next').disabled=pageNum>=ovTotalPages;
+  document.getElementById('ov-page-info').textContent=`Page ${pageNum} / ${ovTotalPages}`;
+  document.getElementById('pov-title').textContent=`${curProject?.name||'—'} — Page ${pageNum}`;
+
+  const page=await pdfDoc.getPage(pageNum);
+  const body=document.getElementById('pov-body');
+  const maxW=body.clientWidth-30;
+  const vp1=page.getViewport({scale:1});
+  const scale=Math.min(maxW/vp1.width,1.8);
+  const vp=page.getViewport({scale});
+
+  const pc=document.getElementById('pdfCanvas');
+  const ac=document.getElementById('annotCanvas');
+  pc.width=vp.width;pc.height=vp.height;
+  ac.width=vp.width;ac.height=vp.height;
+
+  await page.render({canvasContext:pc.getContext('2d'),viewport:vp}).promise;
+
+  // Draw annotations
+  const pd=pdMap[curProject?.id];
+  if(pd?.annotations){
+    drawAnnotations(ac,pd.annotations.filter(a=>a.page===pageNum),scale,vp1.width,vp1.height);
+  }
+
+  // Show page badge
+  const d=buildPageData(curProject);
+  const pgData=d.pages[pageNum];
+  const badge=document.getElementById('page-badge');
+  if(pgData){
+    const colMap={ready:'#3B6D11',partial:'#BA7517',open:'#A32D2D','no-data':'#888',damage:'#A32D2D'};
+    const statusLabel={ready:'✓ Ready to Work',partial:'◑ Partial',open:'● Waiting — Open Tickets','no-data':'Annotated','damage':'⛔ Damage'};
+    const col={ready:'#3B6D11',partial:'#BA7517',open:'#A32D2D','no-data':'#888',damage:'#A32D2D'}[pgData.status];
+    badge.style.display='block';
+    badge.style.borderLeftColor=col;
+    badge.innerHTML=`
+      <div class="ppb-title" style="color:${col}">${statusLabel[pgData.status]||pgData.status}</div>
+      ${pgData.footage>0?`<div class="ppb-row"><span>Footage tagged</span><span class="ppb-val" style="color:${col}">${pgData.footage.toLocaleString()} ft</span></div>`:''}
+      ${pgData.clearCount>0?`<div class="ppb-row"><span>Tickets clear</span><span class="ppb-val" style="color:#3B6D11">✓ ${pgData.clearCount}</span></div>`:''}
+      ${pgData.openCount>0?`<div class="ppb-row"><span>Tickets open</span><span class="ppb-val" style="color:#A32D2D">● ${pgData.openCount}</span></div>`:''}
+      <div class="ppb-divider"></div>
+      <div class="ppb-row"><span>Annotations</span><span class="ppb-val">${pgData.annotations}</span></div>
+      ${pgData.isRedlined?'<div style="color:#3B6D11;font-size:10px;margin-top:3px">✓ Redlined / marked up</div>':''}`;
+  } else {
+    badge.style.display='none';
+  }
+
+  ovRendering=false;
+}
+
+function drawAnnotations(canvas,anns,scale,pdfW,pdfH){
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!anns.length)return;
+
+  // Detect coordinate system by looking at max values
+  const allX=[],allY=[];
+  anns.forEach(a=>{
+    const d=a.data||{};
+    [d.x,d.x1,d.x2].forEach(v=>{if(v!=null&&!isNaN(v))allX.push(v);});
+    [d.y,d.y1,d.y2].forEach(v=>{if(v!=null&&!isNaN(v))allY.push(v);});
+  });
+  const xMax=Math.max(...allX,1);
+  const yMax=Math.max(...allY,1);
+
+  // Scale factor: map annotation coords to canvas coords
+  // If annotation max ≈ PDF points (pdfW/pdfH), use scale directly
+  // If annotation max >> pdfW, they were stored at a larger canvas resolution
+  let sx,sy;
+  if(xMax<3){sx=canvas.width;sy=canvas.height;} // normalized 0-1
+  else if(xMax<=pdfW*1.2){sx=scale;sy=scale;} // PDF point space
+  else{sx=canvas.width/xMax;sy=canvas.height/yMax;} // stored at bigger canvas
+
+  anns.forEach(ann=>{
+    const d=ann.data||{};
+    const type=ann.type;
+    const color=d.color||d.borderColor||'#cc1020';
+    const lw=Math.max((d.lw||d.borderLW||3)*Math.min(scale,.8),1.5);
+    ctx.save();
+    ctx.strokeStyle=color;
+    ctx.lineWidth=lw;
+    ctx.globalAlpha=Math.min((d.opacity||100)/100,1);
+    ctx.lineCap='round';ctx.lineJoin='round';
+
+    if(type==='arrow'||type==='line'){
+      const x1=(d.x1||0)*sx,y1=(d.y1||0)*sy,x2=(d.x2||0)*sx,y2=(d.y2||0)*sy;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      if(type==='arrow'){
+        const ang=Math.atan2(y2-y1,x2-x1),as=Math.max(lw*3.5,10);
+        ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x2,y2);
+        ctx.lineTo(x2-as*Math.cos(ang-.4),y2-as*Math.sin(ang-.4));
+        ctx.lineTo(x2-as*Math.cos(ang+.4),y2-as*Math.sin(ang+.4));
+        ctx.closePath();ctx.fill();
+      }
+    } else if(type==='rect'){
+      const x1=(d.x1!=null?d.x1:d.x||0)*sx,y1=(d.y1!=null?d.y1:d.y||0)*sy;
+      const x2=(d.x2!=null?d.x2:(d.x||0)+(d.w||50))*sx,y2=(d.y2!=null?d.y2:(d.y||0)+(d.h||50))*sy;
+      if(d.fillColor){ctx.globalAlpha=(d.fillOpacity||30)/100;ctx.fillStyle=d.fillColor;ctx.fillRect(x1,y1,x2-x1,y2-y1);}
+      ctx.globalAlpha=(d.opacity||100)/100;ctx.strokeRect(x1,y1,x2-x1,y2-y1);
+    } else if(type==='circle'){
+      const x=(d.x||0)*sx,y=(d.y||0)*sy,rx=(d.rx||d.r||20)*sx,ry=(d.ry||d.r||20)*sy;
+      ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);
+      if(d.fillColor){ctx.globalAlpha=(d.fillOpacity||30)/100;ctx.fillStyle=d.fillColor;ctx.fill();}
+      ctx.globalAlpha=1;ctx.stroke();
+    } else if(type==='tag'){
+      const x=(d.x||0)*sx,y=(d.y||0)*sy;
+      const fs=Math.max((d.fontSize||13)*scale*.65,9);
+      const label=[d.equipe,d.prod?d.prod+'ft':''].filter(Boolean).join(' ');
+      const bw=Math.max(fs*label.length*.58+10,50),bh=fs+8;
+      ctx.globalAlpha=(d.fillOpacity||100)/100;
+      ctx.fillStyle=d.fillColor||'#fff';ctx.fillRect(x,y,bw,bh);
+      ctx.globalAlpha=1;ctx.strokeStyle=d.borderColor||color;
+      ctx.lineWidth=Math.max((d.borderLW||2)*scale*.4,1);ctx.strokeRect(x,y,bw,bh);
+      ctx.fillStyle=d.textColor||'#111';ctx.font=`bold ${fs}px Arial`;ctx.fillText(label,x+4,y+bh-3);
+    }
+    ctx.restore();
+  });
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+biro.auth.getSession().then(({data:{session}})=>{
+  if(session){
+    biroSession=session;
+    document.getElementById('sobtn').style.display='block';
+    document.getElementById('loginWrap').classList.add('gone');
+    loadAll();
+  }
+});
+</script>
+</body></html>
