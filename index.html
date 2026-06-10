@@ -446,7 +446,7 @@ function buildPageData(bp){
   return{pages,pageNums,totalFt:totalTagFt,tickets:tkts,clr,opn,pct};
 }
 
-function getProjStat(bp){
+function getStat(bp){
   const d=buildPageData(bp);
   if(!d.tickets.length&&!d.pageNums?.length)return'none';
   const dmg=d.tickets.filter(t=>t.status==='Damage').length;
@@ -489,43 +489,80 @@ function setF(f,btn){
 }
 
 function renderList(){
-  const q=document.getElementById('srch').value.toLowerCase();
-  const colMap={clear:'#3B6D11',partial:'#BA7517',damage:'#A32D2D',open:'#A32D2D',none:'#ccc'};
-  const filtered=biroProjects.filter(p=>{
-    const st=getProjStat(p);
+  const q=(document.getElementById('srch').value||'').toLowerCase();
+  const list=document.getElementById('plist');
+  if(!list)return;
+
+  // Combine BIRO + OD projects safely
+  const all=[];
+  (biroProjects||[]).forEach(p=>{if(p)all.push(p);});
+  (odProjects||[]).forEach(op=>{
+    if(!op||!op.name)return;
+    if(!all.find(p=>(p.name||'').toLowerCase()===(op.name||'').toLowerCase()))
+      all.push({id:op.id,name:op.name,client:op.client,state:op.state,_od:true});
+  });
+
+  document.getElementById('proj-count').textContent=all.length;
+
+  if(!all.length){
+    list.innerHTML='<div style="padding:14px;font-size:11px;color:#bbb;text-align:center">No projects loaded</div>';
+    return;
+  }
+
+  const filtered=all.filter(p=>{
+    if(!p)return false;
+    const st=getStat(p);
     if(curFilter==='c'&&st!=='clear')return false;
     if(curFilter==='p'&&st!=='partial')return false;
-    if(curFilter==='o'&&(st==='clear'||st==='partial'))return false;
+    if(curFilter==='o'&&(st==='clear'||st==='partial'||st==='none'))return false;
     if(q&&!(p.name||'').toLowerCase().includes(q)&&!(p.client||'').toLowerCase().includes(q))return false;
     return true;
   });
-  const list=document.getElementById('plist');
-  if(!filtered.length){list.innerHTML='<div class="empty">No projects</div>';return;}
+
+  if(!filtered.length){
+    list.innerHTML='<div style="padding:14px;font-size:11px;color:#bbb;text-align:center">No projects match</div>';
+    return;
+  }
+
   list.innerHTML=filtered.map(p=>{
-    const st=getProjStat(p);
-    const pd=pdMap[p.id];
-    const d=buildPageData(p);
-    const col=colMap[st]||'#ccc';
-    const dcl={clear:'g',partial:'a',damage:'r',open:'r',none:'x'}[st];
-    const pages=d.pageNums?.length||0;
-    const pct=d.pct||0;
-    const sel=curProject?.id===p.id?'sel':'';
-    return`<div class="pi ${sel}" onclick="selectProject('${p.id}')">
-      <div class="pdot ${dcl}"></div>
-      <div class="pb">
-        <div class="pn">${p.name||'—'}</div>
-        <div class="pm">${p.client||''}${p.state||p.estado?' · '+(p.state||p.estado):''}${pages?' · '+pages+' pages':''}</div>
-        <div class="pbar"><div class="pbf" style="width:${pct}%;background:${col}"></div></div>
-      </div>
-      <div class="pr">
-        <div class="pft ${dcl}">${d.clr>0?d.clr+'/'+d.tickets.length+' clr':d.tickets.length>0?d.tickets.length+' tkts':d.totalFt>0?d.totalFt.toLocaleString()+'ft':'—'}</div>
-        <div style="font-size:9px;color:#bbb">${pct>0?pct+'% clear':''}</div>
-      </div>
-    </div>`;
+    try{
+      const st=getStat(p);
+      const tkts=getTickets(p);
+      const clr=tkts.filter(t=>t&&(t.status==='Clear'||t.status==='Closed')).length;
+      const pct=tkts.length>0?Math.round(clr/tkts.length*100):0;
+      const ft=getProjFt(p);
+      const sel=curProject&&curProject.id===p.id?'sel':'';
+      const dotCol=st==='clear'?'g':st==='partial'?'a':st==='none'?'x':'r';
+      const ftLabel=ft>0?ft.toLocaleString()+' ft':clr>0?clr+'/'+tkts.length+' clr':tkts.length>0?tkts.length+' tkts':'—';
+      const phase=p.status||p.fase||'andamento';
+      return'<div class="proj-item '+sel+'" onclick="selectProject('+JSON.stringify(JSON.stringify(p))+')">'
+        +'<div class="pdot '+dotCol+'"></div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div class="pn">'+(p.name||'—')+'</div>'
+          +'<div class="pm">'+(p.client||'')+(p.state||p.estado?' · '+(p.state||p.estado):'')+(tkts.length?' · '+tkts.length+' tickets':'')+'</div>'
+          +'<div class="pbar"><div class="pbf" style="width:'+pct+'%;background:'+(st==='clear'?'#3B6D11':st==='partial'?'#BA7517':'#A32D2D')+'"></div></div>'
+        +'</div>'
+        +'<div class="pright '+dotCol+'">'+ftLabel+'</div>'
+        +'</div>';
+    }catch(e){return'';}
   }).join('');
 }
 
-// ── SELECT PROJECT ────────────────────────────────────────────
+function getStat(bp){
+  try{
+    if(!bp)return'none';
+    const tkts=getTickets(bp);
+    if(!tkts||!tkts.length)return'none';
+    const clr=tkts.filter(t=>t&&(t.status==='Clear'||t.status==='Closed')).length;
+    const dmg=tkts.filter(t=>t&&t.status==='Damage').length;
+    if(dmg>0)return'damage';
+    if(clr===tkts.length)return'clear';
+    if(clr>0)return'partial';
+    return'open';
+  }catch(e){return'none';}
+}
+
+
 function selectProject(id){
   curProject=biroProjects.find(p=>p.id===id);
   if(!curProject)return;
